@@ -1,9 +1,15 @@
 import numpy as np
 import unicodedata
-import string
+import torch
 import re
-import random
 import pickle as pkl
+from torch.autograd import Variable
+
+
+
+SOS_token = 0
+EOS_token = 1
+
 
 
 class Preprocesser():
@@ -18,9 +24,8 @@ class Preprocesser():
         self.corpus = corpus
         self.size = len(corpus)
     
-    # Lowercase, trim, and remove non-letter characters
-    # (no stop words in skim rnn ?)
     def normalize(self):
+        '''lowercase, trim, remove non-letter characters'''
         new_corpus = np.array([])
         steps,i = np.arange(0,self.size,self.size/10),0
         for s in self.corpus:
@@ -36,10 +41,11 @@ class Preprocesser():
 
 
     def addSentences(self):
+        '''add sentences in the corpus'''
         for sentence in self.corpus:
             self.addSentence(sentence)
-        
-    '''called within the module:'''
+    
+    #called within the module
     def unicodeToAscii(self,s):
         return ''.join(
             c for c in unicodedata.normalize('NFD', s)
@@ -59,7 +65,7 @@ class Preprocesser():
             self.n_words += 1
         else:
             self.word2count[word] += 1
-            
+    #        
             
     def save(self,filename):
         pkl.dump(self.corpus,open(filename+"_corpus.pkl",'wb'))
@@ -77,10 +83,12 @@ class Preprocesser():
         
 
 def indexesFromSentence(lang, sentence):
+    '''get word indexes of the sentence according to the preprocessed lang argument'''
     return [lang.word2index[word] for word in sentence.split(' ')]
 
 
 def variableFromSentence(lang, sentence):
+    '''return a tensor of indexes that models the words in the sentence given the preprocessed lang'''
     indexes = indexesFromSentence(lang, sentence)
     indexes.append(EOS_token)
     result = torch.LongTensor(indexes).view(-1, 1)
@@ -88,6 +96,7 @@ def variableFromSentence(lang, sentence):
 
 
 def makeInputTarget(lang, sentence, target, n_classes=2):
+    '''turn a sentence and a target in valid torch input'''
     input_variable = variableFromSentence(lang, sentence)
     if target >= n_classes:
         print 'target not in range (0, #classes - 1)'

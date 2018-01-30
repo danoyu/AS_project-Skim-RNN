@@ -2,8 +2,13 @@
 import torch
 import numpy as np
 
+
+
+
+
 #load dataset
 def load_tsv(filename):
+    '''load the rotten tomatoes sentiment dataset'''
     phID, stcID, ph, sentiment = [],[],[],[]
     with open(filename) as f: 
         l = f.readline()
@@ -24,6 +29,7 @@ def load_tsv(filename):
 
 #make validation dataset
 def split_train_test(data, percentage=80):
+    '''return indexes for a train/test split of the given data'''
     size = len(data)
     indexes = np.arange(0,size)
     np.random.shuffle(indexes)
@@ -33,31 +39,16 @@ def split_train_test(data, percentage=80):
     
     return train_indexes, test_indexes
 
-#Fonctions pour la gestion des inputs
-def indexesFromSentence(lang, sentence):
-    return [lang.word2index[word] for word in sentence.split(' ')]
 
-def variableFromSentence(lang, sentence):
-    indexes = indexesFromSentence(lang, sentence)
-    indexes.append(EOS_token)
-    result = torch.LongTensor(indexes).view(-1, 1)
-    return result
-
-def makeInputTarget(lang, sentence, target, n_classes=2):
-    input_variable = variableFromSentence(lang, sentence)
-    if target >= n_classes:
-        print 'target not in range (0, #classes - 1)'
-        return -1
-    target_variable = Variable(torch.LongTensor([target]))
-    return (input_variable, target_variable)
 
 
 #sample from Gumbel(0,1) = -log(-log(Uniform(0,1))
 def gumbel():
+    '''return a sample from the Gumbel Distribution: -log(-log(Uniform[0,1]))'''
     return -torch.log(-torch.log(torch.FloatTensor(2).uniform_()))
 
-#calcul des r_i
 def r(logp, g, temperature):
+    '''function to compute the r_i approximation (see training paragraph)'''
     num = [torch.exp( (pi + gi)/temperature) for (pi,gi) in zip(logp,g)]
     denum = torch.sum(torch.exp( (logp.data + g)/temperature))
     return [n.data/denum for n in num]
