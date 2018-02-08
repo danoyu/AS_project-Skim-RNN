@@ -17,3 +17,7 @@ Le projet comporte
 - un fichier modèles qui contient les implémentations du sélecteur, des RNN, et enfin du skim-RNN avec pyTorch
 - un fichier train.py pour l'apprentissage du skim-RNN, et un fichier pour sa validation, quelques tests et scripts
 
+## Expériences réalisées
+
+Sur les données Rotten Tomatoes, apprentissage de différents modèles et dimensions de Skim RNN, et benchmark avec les baselines LSTM Jump et RNN classique. 
+Etude de l'impact du coefficient de régularisation pour favoriser le skimrate, et visualisations des résultats sur des reviews rotten tomatoes.
