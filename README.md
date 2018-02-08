@@ -1,6 +1,7 @@
 # AS_project-Skim-RNN
 
 Implémentation et tests de l'article proposé (et accepté) à l'ICLR : Neural Speed Reading via SKIM-RNN
+https://openreview.net/pdf?id=Sy-dQG-Rb
 
 ## Idéé Principale
 
