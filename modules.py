@@ -38,12 +38,13 @@ class RNN(nn.Module):
             input_size : the size of the input
             hidden_size : the size of the latent space
             output_size : number of classes in the output
-            cell : should be either gru, lstm, or linear
+            cell : should either be gru, lstm, or linear
         '''
         super(RNN, self).__init__()
         self.hidden_size = hidden_size
-        self.cell = cell        
+        self.cell = cell
         self.h20 = nn.Linear(hidden_size, output_size)
+            
         self.softmax = nn.LogSoftmax()
         if self.cell=='linear':
             self.layer = nn.Linear(input_size,hidden_size)
@@ -71,27 +72,45 @@ class RNN(nn.Module):
             return (Variable(torch.rand(1, 1, self.hidden_size)), Variable(torch.rand(1, 1, self.hidden_size)))
         else:
             return Variable(torch.rand(1, 1, self.hidden_size))
+            
         
         
         
 class SkimRNN(nn.Module):
+    '''Module for the Skim RNN model'''
     
-    def __init__(self, embedder, selector, rnn, skim_rnn):
+    def __init__(self, embedder, selector, rnn, small_rnn):
+        '''parameters:
+            --embedder : a nn.embedding for word representation
+            --selector : a modules.selector for the RNN decision
+            --rnn : a modules.rnn for normal process
+            --small_rnn : the smaller rnn for skimming 
+        '''
         
+        super(SkimRNN, self).__init__()
+        #modules
         self.embedder = embedder
         self.selector = selector
         self.rnn = rnn
-        self.skim_rnn= skim_rnn
+        self.small_rnn= small_rnn
         
+        #dimensions
         self.d = self.rnn.hidden_size
-        self.dprime= self.skim_rnn.hidden_size
+        self.dprime= self.small_rnn.hidden_size
+        self.cell = self.rnn.cell
+        
+        #comptes
+        self.skimcount = 0
+        self.count = 0
     
     def forward(self, input, hidden):
         
         embedding = self.embedder(input).view(1,1,-1)
-        x = torch.cat((embedding, hidden),2).view(1,-1)
+        if self.cell == 'lstm':
+            x = torch.cat((embedding, hidden[0]),2).view(1,-1)
+        else:
+            x = torch.cat((embedding, hidden),2).view(1,-1)
         p = self.selector(x)
-        
         q = torch.multinomial(p.exp())
         choice = int(q.data[0,0])
         
@@ -100,27 +119,32 @@ class SkimRNN(nn.Module):
             output, hidden = self.rnn(embedding, hidden)
         
         else:
+            self.skimcount += 1            
             #go through the skim rnn, which implies 'cutting' the hidden state,
             #running through the neural network, and building the new hidden state.
-            h0 = hidden.view(-1)[:self.dprime]
-            output, h0 = self.skim_rnn(embedding, h0.view(1,1,-1))
-            h1 = hidden.view(-1)[self.dprime:]
-            hidden = torch.cat( (h0.view(1,1,-1 ), h1.view(1,1,-1)), 2) 
-            
-        return output, hidden
+            if self.cell == 'lstm':
+                #décomposition du hidden state ET du cell state
+                h,c = hidden
+                h0 = h.view(-1)[:self.dprime]
+                c0 = c.view(-1)[:self.dprime]
+                output, (h0,c0) = self.small_rnn(embedding, (h0.view(1,1,-1),c0.view(1,1,-1)))
+                h1 = h.view(-1)[self.dprime:]
+                c1 = c.view(-1)[self.dprime:]
+                h = torch.cat( (h0.view(1,1,-1), h1.view(1,1,-1)), 2) 
+                c = torch.cat( (c0.view(1,1,-1), c1.view(1,1,-1)), 2) 
+                hidden = (h,c)
+            else:
+                #simple décomposition/recomposition dans le cas gru ou linear
+                h0 = hidden.view(-1)[:self.dprime]
+                output, h0 = self.small_rnn(embedding, h0.view(1,1,-1))
+                h1 = hidden.view(-1)[self.dprime:]
+                hidden = torch.cat( (h0.view(1,1,-1 ), h1.view(1,1,-1)), 2) 
+        self.count += 1
+        return output, hidden, p, choice
         
-       
-       
-rnn = RNN(24,36,2,cell='lstm')
-hidden = rnn.initHidden()
-cell = rnn.initHidden()
-x = Variable(torch.randn(24)).view(1,1,-1)
-
-output, hidden = rnn(x, hidden)
-
-        
-
-
+    def initHidden(self):
+        return self.rnn.initHidden()
+    
 
 
 

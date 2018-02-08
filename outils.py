@@ -1,9 +1,9 @@
 # -*-coding:utf-8 -*
 import torch
 import numpy as np
-
-
-
+import preprocesser
+import modules
+from torch.autograd import Variable
 
 
 #load dataset
@@ -52,6 +52,52 @@ def r(logp, g, temperature):
     num = [torch.exp( (pi + gi)/temperature) for (pi,gi) in zip(logp,g)]
     denum = torch.sum(torch.exp( (logp.data + g)/temperature))
     return [n.data/denum for n in num]
+    
+
+def X(p,g,i,temperature):
+    '''function for exp(p+g/t) calculation (r derivative)'''
+    return np.exp((p[i]+g[i])/temperature)
+    
+    
+#fonctions d'évaluations
+    
+def accuracy(indexes,lang,targets,skim_rnn):
+    '''compute the accuracy for a preprocessed lang corpus, its targets,
+    and given a skim rnn model'''
+    acc = 0.0
+    for i in indexes:
+        s,t =lang.corpus[i], targets[i]
+        input,target =  preprocesser.makeInputTarget(lang, s, t)
+        input_length = input.size()[0]
+        hidden = skim_rnn.initHidden()
+        for word in range(input_length):
+            x = Variable(input[word])
+            output, hidden, p, choice = skim_rnn(x, hidden)
+
+        if output.exp().multinomial().data[0,0] == target.data[0]:
+            acc += 1
+            
+    return 100*float(acc/len(indexes))
+    
+    
+def accuracy_simple_rnn(indexes,lang,targets,rnn,embedder):
+    '''compute a simpler accuracy for a classic RNN'''
+    acc = 0.0
+    for i in indexes:
+        s,t =lang.corpus[i], targets[i]
+        input,target =  preprocesser.makeInputTarget(lang, s, t)
+        input_length = input.size()[0]
+        hidden = rnn.initHidden()
+        for word in range(input_length):
+            x = Variable(input[word])
+            embedding = embedder(x).view(1,1,-1)
+            output, hidden = rnn(embedding, hidden)
+
+        if output.exp().multinomial().data[0,0] == target.data[0]:
+            acc += 1
+            
+    return 100*float(acc/len(indexes))
+    
 
 
 

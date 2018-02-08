@@ -14,7 +14,6 @@ EOS_token = 1
 
 class Preprocesser():
     
-    '''main functions'''
     def __init__(self,corpus):
         '''corpus : np_array(string)'''
         self.word2index = {}
@@ -29,7 +28,10 @@ class Preprocesser():
         new_corpus = np.array([])
         steps,i = np.arange(0,self.size,self.size/10),0
         for s in self.corpus:
-            uni_s = s.tostring().decode('unicode-escape')
+            if isinstance(s,str):
+                uni_s = s.decode('unicode-escape')
+            else:
+                uni_s = s.tostring().decode('unicode-escape')
             uni_s = self.unicodeToAscii(uni_s.lower().strip())
             uni_s = re.sub(r"([.!?])", r" \1", uni_s)
             uni_s = re.sub(r"[^a-zA-Z.!?]+", r" ", uni_s)
@@ -47,10 +49,7 @@ class Preprocesser():
     
     #called within the module
     def unicodeToAscii(self,s):
-        return ''.join(
-            c for c in unicodedata.normalize('NFD', s)
-            if unicodedata.category(c) != 'Mn'
-        )
+        return ''.join(c for c in unicodedata.normalize('NFD', s) if unicodedata.category(c) != 'Mn')
 
         
     def addSentence(self, sentence):
@@ -65,7 +64,8 @@ class Preprocesser():
             self.n_words += 1
         else:
             self.word2count[word] += 1
-    #        
+    
+    #save and load preprocessers        
             
     def save(self,filename):
         pkl.dump(self.corpus,open(filename+"_corpus.pkl",'wb'))
